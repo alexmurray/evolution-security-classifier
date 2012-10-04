@@ -14,7 +14,7 @@ DISTCLEANFILES = \
 	intltool-merge \
 	intltool-update
 
-SUBDIRS = po src
+SUBDIRS = data po src
 
 MAINTAINERCLEANFILES = 						\
         $(srcdir)/ABOUT-NLS             \

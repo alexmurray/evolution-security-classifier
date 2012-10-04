@@ -51,6 +51,8 @@ LT_INIT
 
 GNOME_COMPILE_WARNINGS
 
+GLIB_GSETTINGS
+
 dnl base packages and versions
 LIBGLIB_REQUIRED=2.30.2
 LIBGTK_REQUIRED=3.0.0
@@ -92,6 +94,7 @@ AC_SUBST(SOEXT)
 # Generated files from automake
 AC_CONFIG_FILES([
 	Makefile
+	data/Makefile
 	src/Makefile
 	po/Makefile.in
 ])

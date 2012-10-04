@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <error-list domain="org.gnome.evolution.plugins.security_classifier" default="GTK_RESPONSE_CANCEL">
-	<error id="security-classifier" type="info">
+	<error id="classify-message" type="info">
 		<_primary>Message has no classification</_primary>
 		<_secondary>This message has not been classified - please select a classification and optional privacy label</_secondary>
 		<button stock="gtk-cancel" response="GTK_RESPONSE_CANCEL" _label="_Edit Message"/>
 		<button response="GTK_RESPONSE_YES" _label="_Send"></button>
 	</error>
 	<error id="classified-external-recipient" type="error">
-		<_primary>Attempt to send a classified message outside of the network</_primary>
-		<_secondary>Please either remove the offending recipients of change the classification of the email as appropriate</_secondary>
-		<!-- <button stock="gtk-ok" response="GTK_RESPONSE_OK"/> -->
+		<_primary>Attempt to send a classified message outside of the domain</_primary>
+		<_secondary xml:space="preserve">Please either change the domin ({0}), remove the offending recipient ({1}) or change the classification of the email to {2} and ensure it contains no classified content</_secondary>
 	</error>
 </error-list>

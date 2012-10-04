@@ -1,0 +1,14 @@
+<schemalist>
+  <schema gettext-domain="evolution" id="org.gnome.evolution.plugin.security-classifier" path="/org/gnome/evolution/plugin/security-classifier/">
+     <key name="check-recipients" type="b">
+      <default>true</default>
+      <_summary>Whether to check recipient email addresses for classified messages are within the domain.</_summary>
+      <_description>When enabled, recipient email addresses are checked that they are within 'domain' when sending classified emails</_description>
+    </key>
+    <key name="domain" type="s">
+      <default>'defence.gov.au'</default>
+      <_summary>The domain to check when check-recipients is active.</_summary>
+      <_description>The domain to check when check-recipients is active.</_description>
+    </key>
+  </schema>
+</schemalist>

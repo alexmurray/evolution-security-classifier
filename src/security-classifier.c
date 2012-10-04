@@ -35,8 +35,17 @@
 #include <mail/em-utils.h>
 #include <libevolution-utils/e-alert-dialog.h>
 
+#define GSETTINGS_SCHEMA_ID "org.gnome.evolution.plugin.security-classifier"
+#define CHECK_RECIPIENTS_KEY "check-recipients"
+#define DOMAIN_KEY "domain"
+
+#define EALERT_MESSAGE_PREFIX "org.gnome.evolution.plugins.security_classifier:"
+#define EALERT_CLASSIFY_MESSAGE EALERT_MESSAGE_PREFIX "classify-message"
+#define EALERT_CLASSIFIED_EXTERNAL_RECIPIENT EALERT_MESSAGE_PREFIX "classified-external-recipient"
+
 
 gint e_plugin_lib_enable (EPlugin *ep, gint enable);
+GtkWidget *e_plugin_lib_get_configure_widget (EPlugin *plugin);
 gboolean init_composer_ui (GtkUIManager *manager, EMsgComposer *composer);
 void org_gnome_evolution_security_classifier (EPlugin *ep, EMEventTargetComposer *t);
 
@@ -262,8 +271,7 @@ ask_for_classification (EPlugin *ep,
         gint response;
 
         dialog = e_alert_dialog_new_for_args (
-                window, "org.gnome.evolution.plugins.security_classifier:"
-                "security-classifier", NULL);
+                window, EALERT_CLASSIFY_MESSAGE, NULL);
 
         container = e_alert_dialog_get_content_area (E_ALERT_DIALOG (dialog));
 
@@ -322,6 +330,7 @@ org_gnome_evolution_security_classifier (EPlugin *ep,
                                          EMEventTargetComposer *t)
 {
         Classification classification = { NULL, NULL };
+        GSettings *settings;
         gchar *u_upcase;
         gchar *marking, *header;
         GtkhtmlEditor *editor = GTKHTML_EDITOR (t->composer);
@@ -350,35 +359,45 @@ org_gnome_evolution_security_classifier (EPlugin *ep,
                 }
         }
 
+        settings = g_settings_new (GSETTINGS_SCHEMA_ID);
+        if (!g_settings_get_boolean (settings, CHECK_RECIPIENTS_KEY)) {
+                goto recipients_ok;
+        }
+
         /* if security is NOT unclassified, check recipients are all within the
          * domain */
         u_upcase = g_utf8_strup (security_labels[0].name, -1);
         if (g_utf8_collate (classification.security, u_upcase)) {
                 EDestination **destinations, **destination;
+                gchar *domain;
+
+                domain = g_settings_get_string (settings, DOMAIN_KEY);
                 destinations = e_composer_header_table_get_destinations (table);
                 destination = destinations;
 
                 while (*destination) {
                         EAlert *alert;
                         const gchar *email = e_destination_get_email (*destination);
-                        if ((g_str_has_suffix (email, "defence.gov.au"))) {
+                        if ((g_str_has_suffix (email, domain))) {
                                 destination++;
                                 continue;
                         }
-                        alert = e_alert_new ("org.gnome.evolution.plugins.security_classifier:"
-                                             "classified-external-recipient", NULL);
+                        alert = e_alert_new (EALERT_CLASSIFIED_EXTERNAL_RECIPIENT,
+                                             domain, email,
+                                             security_labels[0].name, NULL);
                         e_alert_sink_submit_alert (E_ALERT_SINK (t->composer), alert);
                         g_object_unref (alert);
-                        g_warning ("Attempting to email a %s classified email outside of the %s network to recipient %s",
-                                   classification.security, "defence.gov.au", email);
                         g_object_set_data ((GObject *) t->composer,
                                            "presend_check_status", GINT_TO_POINTER(1));
+                        g_free (domain);
                         goto out;
                 }
                 e_destination_freev (destinations);
+                g_free (domain);
         }
         g_free (u_upcase);
 
+recipients_ok:
         /* classification has been set - insert this at the top of the
          * message if is editable */
         marking = g_strjoin (":", classification.security,
@@ -652,4 +671,64 @@ init_composer_ui (GtkUIManager *manager,
 
 out:
         return TRUE;
+}
+
+static void
+domain_entry_changed_cb (GtkEditable *editable,
+                         GSettings *settings)
+{
+        const gchar *domain = gtk_entry_get_text (GTK_ENTRY (editable));
+        g_settings_set_string (settings, DOMAIN_KEY, domain);
+}
+
+static void
+recipients_checkbutton_toggled_cb (GtkToggleButton *button,
+                                   GSettings *settings)
+{
+        gboolean check_recipients = gtk_toggle_button_get_active (button);
+        g_settings_set_boolean (settings, CHECK_RECIPIENTS_KEY,
+                                check_recipients);
+}
+
+
+GtkWidget *
+e_plugin_lib_get_configure_widget (EPlugin *plugin)
+{
+        GSettings *settings;
+        GtkWidget *recipients_checkbutton;
+        GtkWidget *domain_entry;
+        GtkWidget *box;
+
+        box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+        gtk_widget_show (box);
+        gtk_widget_set_size_request (box, 385, 189);
+
+        settings = g_settings_new (GSETTINGS_SCHEMA_ID);
+        recipients_checkbutton = gtk_check_button_new_with_mnemonic (_("_Warn when sending classified message to recipients outside of domain"));
+        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (recipients_checkbutton),
+                                      g_settings_get_boolean (settings,
+                                                              CHECK_RECIPIENTS_KEY));
+        gtk_widget_show (recipients_checkbutton);
+        gtk_box_pack_start (GTK_BOX (box), recipients_checkbutton, TRUE, TRUE, 0);
+        g_signal_connect (recipients_checkbutton, "toggled",
+                          G_CALLBACK(recipients_checkbutton_toggled_cb),
+                          settings);
+
+        domain_entry = gtk_entry_new ();
+        gtk_entry_set_text (GTK_ENTRY (domain_entry),
+                            g_settings_get_string (settings, DOMAIN_KEY));
+        gtk_widget_show (domain_entry);
+        gtk_box_pack_start (GTK_BOX (box), domain_entry, TRUE, TRUE, 0);
+        g_signal_connect (domain_entry, "changed",
+                          G_CALLBACK(domain_entry_changed_cb), settings);
+        /* make sensitive when check-recipients is active */
+        g_settings_bind (settings, CHECK_RECIPIENTS_KEY,
+                         domain_entry, "sensitive",
+                         G_SETTINGS_BIND_GET);
+
+        g_object_set_data_full (G_OBJECT (box),
+                                "security-classifier-settings",
+                                settings,
+                                (GDestroyNotify)g_object_unref);
+        return box;
 }
