@@ -1,0 +1,5 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+src/org-gnome-evolution-security-classifier.eplug.xml
+src/org-gnome-evolution-security-classifier.error.xml
+src/security-classifier.c

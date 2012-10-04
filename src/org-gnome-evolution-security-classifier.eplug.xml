@@ -1,0 +1,25 @@
+<e-plugin-list>
+  <e-plugin
+      type="shlib"
+      id="org.gnome.evolution.security-classifier"
+      _name="Security Classifier"
+      domain="+GETTEXT_PACKAGE+"
+      localedir="+LOCALEDIR+"
+      version="+VERSION+"
+      location="+PLUGIN_DIR+/liborg-gnome-evolution-security-classifier+SOEXT+">
+    <_description>Provides an easy way to add security classifications to messages conforming to the.</_description>
+    <author name="Alex Murray" email="murray.alex@gmail.com"/>
+    <hook class="org.gnome.evolution.ui:1.0">
+      <ui-manager id="org.gnome.evolution.composer"
+		  callback="init_composer_ui">
+      </ui-manager>
+    </hook>
+    <hook class="org.gnome.evolution.mail.events:1.0">
+      <event
+	  id="composer.presendchecks"
+	  handle="org_gnome_evolution_security_classifier"
+	  target="message"
+	  />
+    </hook>
+  </e-plugin>
+</e-plugin-list>
