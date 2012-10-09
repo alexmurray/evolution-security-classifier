@@ -37,6 +37,7 @@
 /configure
 /configure.lineno
 /configure.scan
+/data/org.gnome.evolution.plugin.security-classifier.gschema.valid
 /depcomp
 /gnome-doc-utils.make
 /gtk-doc.make
@@ -88,6 +89,7 @@
 /m4/xsize.m4
 /missing
 /mkinstalldirs
+/omf.make
 /po/*.gmo
 /po/*.mo
 /po/.intltool-merge-cache
@@ -109,3 +111,4 @@
 /so_locations
 /stamp-h1
 /tags
+/xmldocs.make
