@@ -325,6 +325,45 @@ ask_for_classification (EPlugin *ep,
         return response == GTK_RESPONSE_YES;
 }
 
+static void
+insert_marking_html(gchar **html, const gchar *marking)
+{
+        GRegex *regex = g_regex_new ("<body>", G_REGEX_CASELESS, 0, NULL);
+        GMatchInfo *info;
+        gint start, end;
+
+        /* find where <body> tag starts */
+        g_regex_match (regex, *html, 0, &info);
+        if (g_match_info_fetch_pos (info, 0, &start, &end) &&
+            start > 0 && end > start) {
+                gchar *tail = g_strdup (*html + end);
+                gchar *mark = g_strdup_printf ("\n<p><b>%s</b></p>", marking);
+
+                /* if not already marked, insert marking */
+                if (!g_str_has_prefix (tail, mark)) {
+                        gchar *new;
+
+                        /* truncate at end of current <body> tag */
+                        (*html)[end] = '\0';
+                        /* generate new html with our inserted
+                           classification marking */
+                        new = g_strconcat (*html, mark, tail, NULL);
+                        g_free (*html);
+                        *html = new;
+                }
+        }
+}
+
+static void
+insert_marking_plain(gchar **plain, const gchar *marking)
+{
+        if (!g_str_has_prefix(*plain, marking)) {
+                gchar *new = g_strdup_printf ("%s\n\n%s", marking, *plain);
+                g_free (*plain);
+                *plain = new;
+        }
+}
+
 void
 org_gnome_evolution_security_classifier (EPlugin *ep,
                                          EMEventTargetComposer *t)
@@ -406,45 +445,24 @@ recipients_ok:
         g_free (classification.privacy);
 
         web_view = e_msg_composer_get_web_view (t->composer);
-        if (e_web_view_get_editable (web_view))
-        {
-                if (gtkhtml_editor_get_html_mode (editor)) {
-                        gchar *html = gtkhtml_editor_get_text_html (editor, NULL);
-                        /* find where <body> tag starts */
-                        gchar *body = g_strrstr (html, "<body>");
-                        if (!body) {
-                                body = g_strrstr (html, "<BODY>");
-                        }
-                        if (body) {
-                                gchar *tail;
-                                gchar *new_html;
-
-                                /* duplicate text beyond <body> tag and truncate
-                                   html at end of body tag */
-                                body += strlen ("<body>");
-                                tail = g_strdup (body);
-                                body[0] = '\0';
-
-                                /* generate new html with our inserted
-                                   classification marking */
-                                new_html = g_strdup_printf ("%s\n<p><b>%s</b></p>%s",
-                                                            html, marking, tail);
-                                gtkhtml_editor_set_text_html (editor, new_html, -1);
-                                g_free (new_html);
-                                g_free (tail);
-                        }
-                        g_free (html);
-                } else {
-                        gchar *text = gtkhtml_editor_get_text_plain (editor, NULL);
-                        gchar *new_text = g_strdup_printf ("%s\n\n%s", marking, text);
-                        /* clear existing text then insert ours */
-                        gtkhtml_editor_set_text_html (editor, "", -1);
-                        gtkhtml_editor_insert_text (editor, new_text);
-                        g_free (new_text);
-                        g_free (text);
-                }
+        if (!e_web_view_get_editable (web_view)) {
+                /* can't edit web view to insert classification */
+                goto set_header;
+        }
+        if (gtkhtml_editor_get_html_mode (editor)) {
+                gchar *html = gtkhtml_editor_get_text_html (editor, NULL);
+                insert_marking_html (&html, marking);
+                gtkhtml_editor_set_text_html (editor, html, -1);
+                g_free (html);
+        } else {
+                gchar *plain = gtkhtml_editor_get_text_plain (editor, NULL);
+                insert_marking_plain (&plain, marking);
+                gtkhtml_editor_set_text_html (editor, "", -1);
+                gtkhtml_editor_insert_text (editor, plain);
+                g_free (plain);
         }
 
+set_header:
         /* also set x-protective-marking header as per Email Protective
            Marking Standard for the Australian Government October 2005 -
            http://www.finance.gov.au/e-government/security-and-authentication/docs/Email_Protective.pdf */
