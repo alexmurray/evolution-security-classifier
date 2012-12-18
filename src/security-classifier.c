@@ -374,8 +374,11 @@ org_gnome_evolution_security_classifier (EPlugin *ep,
         gchar *marking, *header;
         GtkhtmlEditor *editor = GTKHTML_EDITOR (t->composer);
         EComposerHeaderTable *table;
-        EAccount *account;
-        EWebView *web_view;
+        ESource *source = NULL;
+        ESourceRegistry *registry;
+        ESourceMailIdentity *identity;
+        EWebViewGtkHTML *web_view;
+        const gchar *uid, *origin;
 
         table = e_msg_composer_get_header_table (t->composer);
 
@@ -445,7 +448,7 @@ recipients_ok:
         g_free (classification.privacy);
 
         web_view = e_msg_composer_get_web_view (t->composer);
-        if (!e_web_view_get_editable (web_view)) {
+        if (!e_web_view_gtkhtml_get_editable (web_view)) {
                 /* can't edit web view to insert classification */
                 goto set_header;
         }
@@ -466,9 +469,29 @@ set_header:
         /* also set x-protective-marking header as per Email Protective
            Marking Standard for the Australian Government October 2005 -
            http://www.finance.gov.au/e-government/security-and-authentication/docs/Email_Protective.pdf */
-        account = e_composer_header_table_get_account (table);
+        registry = e_composer_header_table_get_registry (table);
+        uid = e_composer_header_table_get_identity_uid (table);
+
+        if (!uid) {
+                goto out;
+        }
+
+        source = e_source_registry_ref_source (registry, uid);
+        if (!source) {
+                goto out;
+        }
+        /* ensure this is really a mail identity source */
+        if (!e_source_has_extension (source,
+                                     E_SOURCE_EXTENSION_MAIL_IDENTITY)) {
+                g_object_unref(source);
+                goto out;
+        }
+
+        identity = e_source_get_extension (source,
+                                           E_SOURCE_EXTENSION_MAIL_IDENTITY);
+        origin = e_source_mail_identity_get_address (identity);
         header = g_strdup_printf ("VER=2005.6, NS=gov.au, SEC=%s, ORIGIN=%s",
-                                  marking, e_account_get_string (account, E_ACCOUNT_ID_ADDRESS));
+                                  marking, origin);
         e_msg_composer_set_header (t->composer, "x-protective-marking", header);
         g_free (header);
 
