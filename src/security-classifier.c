@@ -328,7 +328,7 @@ ask_for_classification (EPlugin *ep,
 static void
 insert_marking_html(gchar **html, const gchar *marking)
 {
-        GRegex *regex = g_regex_new ("<body>", G_REGEX_CASELESS, 0, NULL);
+        GRegex *regex = g_regex_new ("<body[^>]*>", G_REGEX_CASELESS, 0, NULL);
         GMatchInfo *info;
         gint start, end;
 
@@ -351,6 +351,9 @@ insert_marking_html(gchar **html, const gchar *marking)
                         g_free (*html);
                         *html = new;
                 }
+        } else {
+                g_warning ("Unable to find body tag to insert classification marking: %s",
+                           *html);
         }
 }
 
