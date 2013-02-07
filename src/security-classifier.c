@@ -423,7 +423,10 @@ org_gnome_evolution_security_classifier (EPlugin *ep,
                 while (*destination) {
                         EAlert *alert;
                         const gchar *email = e_destination_get_email (*destination);
-                        if ((g_str_has_suffix (email, domain))) {
+                        /* sometimes there are zero length strings as
+                           destinations so ignore these */
+                        if (!g_utf8_strlen (email, -1) ||
+                            (g_str_has_suffix (email, domain))) {
                                 destination++;
                                 continue;
                         }
